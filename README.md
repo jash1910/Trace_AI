@@ -2,13 +2,15 @@
 
 ### Autonomous Research Intelligence Platform
 
-**Research. Verify. Analyze. Generate.**
+**Research. Verify. Analyze. Generate. Secure.**
 
 TRACE is an AI-powered autonomous research platform that transforms a single topic into a comprehensive, citation-backed research report within minutes.
 
 Unlike traditional AI chatbots that generate responses from pre-trained knowledge, TRACE actively searches the web, gathers information from multiple sources, verifies claims, extracts insights, generates visualizations, creates professional reports, and allows users to interact with the collected knowledge through a Retrieval-Augmented Generation (RAG) chat system.
 
 Built using a multi-agent architecture powered by LangGraph, TRACE automates the entire research workflow from information gathering to final report generation.
+
+This version of TRACE integrates the **PrivateVault** coordination framework to implement safety alignment, intent validation, and adversarial security benchmarking across all agent execution boundaries.
 
 ---
 
@@ -57,41 +59,16 @@ TRACE uses specialized AI agents that work together:
 
 ---
 
-## Key Capabilities
+## PrivateVault Security & Alignment
 
-### Real-Time Web Research
+TRACE wraps all agent execution boundaries with **PrivateVault** to enforce robust safety, intent validation, and data accountability checks:
 
-Collects information directly from live web sources rather than relying solely on LLM knowledge.
-
-### Automated Fact Verification
-
-Compares information across sources and identifies conflicting claims.
-
-### Interactive Visualizations
-
-Automatically converts extracted statistics into charts and graphs.
-
-### Professional Report Generation
-
-Creates detailed reports containing:
-
-* Executive Summary
-* Industry Overview
-* Market Analysis
-* Key Trends
-* Opportunities
-* Challenges
-* Future Outlook
-* Key Statistics
-* Reference Bibliography
-
-### RAG-Powered Research Chat
-
-Ask questions about generated reports and receive citation-backed answers sourced directly from collected documents.
-
-### PDF Export
-
-Download professionally formatted research reports with references included.
+1. **Intent Normalization**: Verifies that the agent's intent matches authorized system schemas.
+2. **Risk Scoring**: Evaluates the potential risk level of requested actions before execution.
+3. **Adversarial Stitching Detection**: Checks context windows and history for multi-turn prompt injection attacks.
+4. **Rate-Limiting & Gatekeeping**: Prevents execution cascades and rate-limit violations.
+5. **Decentralized Audit Logging**: Logs every agent action to a hash-chained, tamper-evident local ledger (`pv_audit_ledger.jsonl`).
+6. **Merkle Proof Generation**: Computes a root cryptographic hash representing the complete session context history to guarantee lineage integrity.
 
 ---
 
@@ -101,32 +78,38 @@ Download professionally formatted research reports with references included.
 User Topic Input
         │
         ▼
+   [PrivateVault Coordinator] (Security Check: Intent, Risk, Injection Detection)
+        │
+        ▼
 Research Agent
+        │
+        ▼
+   [PrivateVault Coordinator]
         │
         ▼
 Fact Checker Agent
         │
         ▼
+   [PrivateVault Coordinator]
+        │
+        ▼
 Analyst Agent
+        │
+        ▼
+   [PrivateVault Coordinator]
         │
         ▼
 Visualization Agent
         │
         ▼
-Writer Agent
+   [PrivateVault Coordinator]
         │
         ▼
-Generated Report
-        │
-        ├── Interactive Charts
-        ├── PDF Export
-        └── Source References
-                │
-                ▼
-          ChromaDB
-                │
-                ▼
-          RAG Chat Interface
+Writer Agent ──► Generated Report
+                       │
+                       ├── Interactive Charts
+                       ├── PDF Export
+                       └── Source References ──► ChromaDB ──► RAG Chat Interface
 ```
 
 ---
@@ -141,6 +124,10 @@ Generated Report
 ### Backend
 
 * FastAPI
+
+### Security & Coordination
+
+* PrivateVault Core
 
 ### AI Frameworks
 
@@ -164,11 +151,6 @@ Generated Report
 ### Report Generation
 
 * ReportLab
-
-### Environment Management
-
-* Python
-* dotenv
 
 ---
 
@@ -209,13 +191,22 @@ Users can ask follow-up questions through the RAG-powered chat interface.
 ```text
 TRACE/
 │
-├── frontend/
-│   ├── app.py
+├── run_benchmark.py             # Root benchmark executor (actual agent imports)
+├── benchmark_report.json        # Compiled comparative security and performance report
+├── pv_audit_ledger.jsonl        # Cryptographically chained local decision ledger
+│
+├── integration/                 # PrivateVault integration layer
+│   ├── __init__.py
+│   ├── config.py                # Directories and output path configurations
+│   ├── pv_bridge.py             # PVCoordinator wrapper & SDK fallback handlers
+│   ├── attack_simulator.py      # Prompt Injection, Intent Drift, Unauthorized, Hidden Context simulators
+│   ├── metrics.py               # Calculation utilities (consensus score, recovery rate, accuracy)
+│   ├── benchmark_report.py      # JSON report compiler and ledger copy manager
+│   └── helpers.py               # Workspace key validator
 │
 ├── backend/
-│   ├── main.py
-│   ├── routes/
-│   └── services/
+│   ├── api.py                   # REST API exposing /api/research with use_pv support
+│   └── workflow.py              # Compiled LangGraph workflow with PV wrappers
 │
 ├── agents/
 │   ├── research_agent.py
@@ -224,21 +215,10 @@ TRACE/
 │   ├── visualization_agent.py
 │   └── writer_agent.py
 │
-├── rag/
-│   ├── chroma_store.py
-│   ├── embeddings.py
-│   └── retrieval.py
-│
-├── reports/
-│
-├── charts/
-│
-├── data/
-│
+├── reports/                     # ReportLab outputs & charts
+├── data/                        # Vector DB storage
 ├── requirements.txt
-│
 ├── .env
-│
 └── README.md
 ```
 
@@ -287,7 +267,7 @@ pip install -r requirements.txt
 Create a `.env` file in the root directory:
 
 ```env
-GEMINI_API_KEY=your_gemini_api_key
+GOOGLE_API_KEY=your_gemini_api_key
 
 TAVILY_API_KEY=your_tavily_api_key
 ```
@@ -296,16 +276,12 @@ TAVILY_API_KEY=your_tavily_api_key
 
 ## Running the Application
 
-### Start the Backend
+### Start the Application using Streamlit
+
+The Streamlit app automatically boots and manages the backend API server. To launch the full interface:
 
 ```bash
-uvicorn main:app --reload
-```
-
-### Launch the Frontend
-
-```bash
-streamlit run app.py
+venv/bin/streamlit run app.py
 ```
 
 Open your browser and navigate to:
@@ -313,6 +289,22 @@ Open your browser and navigate to:
 ```text
 http://localhost:8501
 ```
+
+---
+
+## Security & Performance Benchmarking
+
+A comparative benchmarking framework tests the TRACE system **with and without** PrivateVault coordination. It automatically runs 4 attack vectors (Prompt Injection, Intent Drift, Unauthorized Action, Hidden Malicious Context) over a multi-turn workflow to evaluate the system's defenses.
+
+To execute the benchmark suite:
+
+```bash
+venv/bin/python run_benchmark.py
+```
+
+This runs the benchmark and outputs:
+1. **`benchmark_report.json`**: Performance metrics comparing consensus, speed, and safety block rates.
+2. **`pv_audit_ledger.jsonl`**: The tamper-evident decision log.
 
 ---
 
@@ -344,56 +336,14 @@ http://localhost:8501
 
 ---
 
-## Example Output
-
-A completed TRACE report includes:
-
-* Verified web sources
-* Extracted key statistics
-* Interactive charts
-* Executive summary
-* Market analysis
-* Opportunities and risks
-* Future outlook
-* Source bibliography
-* Downloadable PDF
-
----
-
-## Why TRACE?
-
-Traditional research requires:
-
-* Searching dozens of websites
-* Reading lengthy articles
-* Organizing notes manually
-* Verifying claims
-* Creating visualizations
-* Writing reports
-
-TRACE automates this process through an intelligent multi-agent system that performs the entire workflow autonomously.
-
----
-
-## Future Enhancements
-
-* Multi-language research support
-* PowerPoint generation
-* Source credibility scoring
-* Team collaboration features
-* Research history tracking
-* Cloud vector database support
-* Scheduled automated research reports
-* Enterprise deployment support
-
----
-
 ## Skills Demonstrated
 
 This project showcases:
 
-* Agentic AI Systems
-* Multi-Agent Workflows
+* Agentic AI Systems & Alignment
+* Guardrails & Adversarial Defenses
+* Tamper-Proof Lineage & Ledger Verification
+* Multi-Agent Orchestration (LangGraph)
 * Retrieval-Augmented Generation (RAG)
 * Vector Databases
 * Prompt Engineering
