@@ -7,15 +7,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
-# LangGraph and Agents
-from langgraph.graph import StateGraph, END
-from typing_extensions import TypedDict
-
-from agents.research_agent import run_research_agent
-from agents.fact_checker_agent import run_fact_checker_agent
-from agents.analyst_agent import run_analyst_agent
-from agents.visualization_agent import run_visualization_agent
-from agents.writer_agent import run_writer_agent
+# Import workflow runners from backend/workflow
+from backend.workflow import run_trace, run_trace_with_pv
 
 # Utilities
 from utils.pdf_generator import generate_pdf_report
@@ -46,47 +39,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ----------------- LANGGRAPH SETUP -----------------
-
-class ResearchState(TypedDict):
-    topic: str
-    depth: str
-    sources: List[Dict[str, Any]]
-    fact_check_results: str
-    insights: Dict[str, Any]
-    statistics: List[Dict[str, Any]]
-    charts_data: List[Dict[str, Any]]
-    chart_paths: List[str]
-    report: str
-    pdf_path: str
-    error: str
-
-# Create StateGraph
-workflow = StateGraph(ResearchState)
-
-# Add Agent Nodes
-workflow.add_node("research", run_research_agent)
-workflow.add_node("fact_checker", run_fact_checker_agent)
-workflow.add_node("analyst", run_analyst_agent)
-workflow.add_node("visualization", run_visualization_agent)
-workflow.add_node("writer", run_writer_agent)
-
-# Define transitions
-workflow.set_entry_point("research")
-workflow.add_edge("research", "fact_checker")
-workflow.add_edge("fact_checker", "analyst")
-workflow.add_edge("analyst", "visualization")
-workflow.add_edge("visualization", "writer")
-workflow.add_edge("writer", END)
-
-# Compile
-graph_runnable = workflow.compile()
-
 # ----------------- API SCHEMAS -----------------
 
 class ResearchRequest(BaseModel):
     topic: str
     depth: str = "detailed" # brief, detailed, exhaustive
+    use_pv: bool = False   # Defaults to False to keep existing Streamlit fully backward compatible
 
 class ChatRequest(BaseModel):
     topic: str
@@ -105,32 +63,37 @@ async def generate_report(req: ResearchRequest):
     """
     Triggers the multi-agent workflow to collect search results,
     run fact checking, perform analysis, extract statistics, and build a research report.
+    Supports PrivateVault security wrapping when `use_pv` is True.
     """
-    logger.info(f"Received research request for: '{req.topic}' (depth: {req.depth})")
+    logger.info(f"Received research request for: '{req.topic}' (depth: {req.depth}, use_pv: {req.use_pv})")
     
     if not req.topic.strip():
         raise HTTPException(status_code=400, detail="Research topic cannot be empty.")
         
-    initial_state: ResearchState = {
-        "topic": req.topic,
-        "depth": req.depth,
-        "sources": [],
-        "fact_check_results": "",
-        "insights": {},
-        "statistics": [],
-        "charts_data": [],
-        "chart_paths": [],
-        "report": "",
-        "pdf_path": "",
-        "error": ""
-    }
-    
     try:
-        # Run the workflow
-        result = graph_runnable.invoke(initial_state)
-        
+        # Run the workflow with or without PrivateVault
+        if req.use_pv:
+            result = run_trace_with_pv(req.topic, req.depth)
+        else:
+            result = run_trace(req.topic, req.depth)
+            
         if result.get("error"):
             raise HTTPException(status_code=500, detail=result["error"])
+            
+        # Check if PrivateVault blocked the request
+        if result.get("pv_blocked"):
+            return {
+                "topic": req.topic,
+                "report": "Request blocked by PrivateVault Safety & Alignment Policy.",
+                "sources": [],
+                "fact_check_results": f"Execution Blocked. Reason: {result.get('pv_reason')}",
+                "statistics": [],
+                "charts_data": [],
+                "pdf_path": "",
+                "pv_blocked": True,
+                "pv_reason": result.get("pv_reason"),
+                "message": "Report generation blocked by PrivateVault check."
+            }
             
         report_content = result.get("report", "")
         sources = result.get("sources", [])
@@ -145,7 +108,7 @@ async def generate_report(req: ResearchRequest):
         if not indexed_successfully:
             logger.warning("RAG vector database initialization failed.")
             
-        return {
+        res_payload = {
             "topic": result.get("topic"),
             "report": report_content,
             "sources": sources,
@@ -155,6 +118,11 @@ async def generate_report(req: ResearchRequest):
             "pdf_path": pdf_path,
             "message": "Report and PDF generated successfully."
         }
+        
+        if req.use_pv and "_pv_report" in result:
+            res_payload["_pv_report"] = result["_pv_report"]
+            
+        return res_payload
         
     except Exception as e:
         logger.error(f"Workflow execution failed: {e}")

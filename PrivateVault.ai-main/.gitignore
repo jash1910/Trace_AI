@@ -1,0 +1,109 @@
+__pycache__/
+*.pyc
+*.log
+*.zip
+*.bak
+*.svg
+*.dot
+*.pkl
+*.pth
+node_modules/
+.env
+test_diagnostics_*
+dump.rdb
+audit_report.json
+ai_firewall_ledger.jsonl
+venv/
+__pycache__/
+*.pyc
+die/core/__pycache__/
+die/tests/__pycache__/
+die/__pycache__/
+test_diagnostics_*
+dump.rdb
+audit_report.json
+ai_firewall_ledger.jsonl
+venv/
+__pycache__/
+*.pyc
+die/core/__pycache__/
+die/tests/__pycache__/
+die/__pycache__/
+evidence.jsonl
+
+# PrivateVault demo artifacts
+__pycache__/
+*.pyc
+/tmp/
+pv_home/
+
+# Attack simulations
+fake_litellm_install.py
+malicious_package_sim.py
+
+# Local runtime artifacts
+evidence.jsonl
+
+
+# Runtime trust state
+coordination/trust/trust_state.json
+
+# Build / temp
+build/
+dist/
+*.egg-info/
+.hypothesis/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+pv_events.log
+
+# Local env
+.env
+*.scratch.json
+input.json
+output.json
+clean.json
+nohup.out
+audit_*.json
+__pycache__/
+*.patch
+pv_cost_layer/router/learning_store.json
+economics_events.jsonl
+pv_economics_store.db
+*.pre_*
+ci_test/
+
+# PrivateVault CLI binaries
+privatevault-cli/privatevault
+privatevault-cli/privatevault-cli
+
+# Runtime generated
+pii_runtime_ledger.jsonl
+privatevault-cli/privatevault-test
+/tmp/privatevault_audit.log
+.env
+.env.*
+!.env.example
+!.env.test.example
+venv/
+__pycache__/
+*.pyc
+*.bak
+*.bak.*
+*.broken.*
+*.pre_*
+*.rdb
+*.worm
+*.log
+!logs/logger.py
+!logs/__init__.py
+final_v*.json
+FETCH_HEAD
+agent-logic-test-results-*/
+# Runtime graph state
+intent_graph.db
